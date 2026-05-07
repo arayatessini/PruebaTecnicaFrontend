@@ -1,0 +1,187 @@
+<main class="flex-grow container mx-auto px-4 py-8 min-h-screen">
+  <select
+    class="mb-6 border border-[#97ce4c] bg-[#043c6e] text-white rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#97ce4c]"
+    [value]="selectedSeason()"
+    (change)="onSeasonChange($any($event.target).value)"
+  >
+    <option value="">Todas las temporadas</option>
+    <option value="S01">Temporada 1</option>
+    <option value="S02">Temporada 2</option>
+    <option value="S03">Temporada 3</option>
+    <option value="S04">Temporada 4</option>
+    <option value="S05">Temporada 5</option>
+  </select>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <!-- Condicionales para manejo de estado -->
+    @if (episodeService.episodesLoading()) {
+      <div class="col-span-full text-center py-20">
+        <div
+          class="animate-spin h-8 w-8 border-4 border-[#97ce4c] border-t-transparent rounded-full mx-auto mb-4"
+        ></div>
+        <p class="text-[#bbe0f2]">Cargando episodios...</p>
+      </div>
+    } @else if (episodeService.error()) {
+      <div class="col-span-full text-center py-20 text-red-400">
+        {{ episodeService.error() }}
+      </div>
+    } @else if (!filteredEpisodes().length) {
+      <div class="col-span-full text-center py-20 text-gray-400">
+        Sin resultados
+      </div>
+    } @else {
+      @for (episode of filteredEpisodes(); track episode.id) {
+        <!-- Card del Episodio -->
+        <article
+          class="bg-[#043c6e] text-white rounded-2xl shadow-md border border-[#97ce4c]/30 flex flex-col hover:shadow-[0_0_20px_#97ce4c] transition-all duration-300 overflow-hidden"
+        >
+          <div class="p-4 flex-grow">
+            <!-- Badge de Episodio -->
+            <span
+              class="inline-block px-3 py-1 rounded-full bg-[#97ce4c]/20 text-[#97ce4c] text-xs font-bold uppercase tracking-wider mb-3"
+            >
+              {{ episode.episode }}
+            </span>
+
+            <h2 class="text-xl font-bold text-[#f0e14a] mb-2 leading-tight">
+              {{ episode.name }}
+            </h2>
+
+            <p class="text-[#bbe0f2] text-sm flex items-center mb-4">
+              <svg
+                class="w-4 h-4 mr-2"
+                fill="none"
+                stroke="#aee6e3"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+              <span class="font-bold mr-1">Lanzamiento:</span
+              >{{ formatDate(episode.air_date) }}
+            </p>
+          </div>
+
+          <div class="px-6 py-4 bg-[#160440] border-t border-[#97ce4c]/20">
+            <button
+              (click)="cargarDetalle(episode)"
+              class="w-full bg-[#97ce4c] hover:bg-[#88e23b] text-black font-bold py-2 px-4 rounded-xl transition-all duration-200 shadow-md hover:shadow-[0_0_12px_#97ce4c]"
+            >
+              Ver detalles del episodio
+            </button>
+          </div>
+        </article>
+      }
+    }
+  </div>
+
+  @if (!isFiltering()) {
+    <div class="flex justify-center items-center gap-4 mt-8 mb-9">
+      <button
+        (click)="prevPage()"
+        [disabled]="!hasPrev()"
+        class="px-4 py-2 border border-[#97ce4c] text-[#97ce4c] rounded-xl hover:bg-[#97ce4c] hover:text-black disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        ← Anterior
+      </button>
+
+      <span class="font-medium"> Página {{ page() }} </span>
+
+      <button
+        (click)="nextPage()"
+        [disabled]="!hasNext()"
+        class="px-4 py-2 border border-[#97ce4c] text-[#97ce4c] rounded-xl hover:bg-[#97ce4c] hover:text-black disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        Siguiente →
+      </button>
+    </div>
+  }
+
+  <!-- Estructura del modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center">
+      <!-- Overlay -->
+      <div
+        class="absolute inset-0 bg-black/60"
+        (click)="showModal.set(false)"
+      ></div>
+
+      <!-- Modal -->
+      <div
+        class="relative z-[10000] bg-[#043c6e] text-white rounded-2xl shadow-xl w-[90%] max-w-lg p-6 border border-[#97ce4c]/30"
+      >
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-xl font-semibold text-[#f0e14a]">
+            {{ selectedEpisode()?.name }}
+          </h2>
+
+          <button
+            class="text-gray-300 hover:text-white"
+            (click)="showModal.set(false)"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Info episodio -->
+        <div class="flex flex-col text-md mb-6 text-[#bbe0f2]">
+          <span>
+            <strong class="text-white font-semibold">Temporada:</strong>
+            {{ selectedEpisode()?.episode }}
+          </span>
+          <span>
+            <strong class="text-white font-semibold">
+              Fecha de estreno:
+            </strong>
+            {{ formatDate(selectedEpisode()?.air_date) }}
+          </span>
+        </div>
+
+        @if (episodeService.charactersLoading()) {
+          <div class="text-center py-6">
+            <div
+              class="animate-spin h-6 w-6 border-4 border-[#97ce4c] border-t-transparent rounded-full mx-auto mb-2"
+            ></div>
+            <p class="text-sm text-[#bbe0f2]">Cargando personajes...</p>
+          </div>
+        } @else if (!episodeService.characters().length) {
+          <!-- Sin resultados -->
+          <p class="text-center text-gray-400 italic">No hay personajes</p>
+        } @else {
+          <!-- Lista -->
+          <ul class="max-h-80 overflow-y-auto space-y-2">
+            @for (
+              character of episodeService.characters();
+              track character.id
+            ) {
+              <li
+                class="flex items-center gap-3 p-2 rounded-lg hover:bg-[#160440] transition"
+              >
+                <img
+                  [src]="character.image"
+                  [alt]="character.name"
+                  class="w-14 h-14 rounded-full object-cover"
+                />
+
+                <div class="flex flex-col">
+                  <span class="font-medium">
+                    {{ character.name }}
+                  </span>
+
+                  <span class="text-sm text-[#bbe0f2]">
+                    {{ character.species }} • {{ character.gender }}
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</main>
